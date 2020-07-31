@@ -39,4 +39,3 @@ from . import NeighborSearch
 from . import formats
 from . import pkdtree
 from . import nsgrid
-from . import accessors
