@@ -432,9 +432,8 @@ def atomgroup_to_mol(ag, NoImplicit=True, max_iter=200, force=False):
         # infer bond orders and formal charges from the connectivity
         _infer_bo_and_charges(mol)
         mol = _standardize_patterns(mol, max_iter)
-
-    # sanitize
-    Chem.SanitizeMol(mol)
+        # sanitize
+        Chem.SanitizeMol(mol)
 
     return mol
 
