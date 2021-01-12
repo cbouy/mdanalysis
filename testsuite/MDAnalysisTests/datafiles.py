@@ -178,7 +178,6 @@ __all__ = [
     "RamaArray", "GLYRamaArray", # time series of phi/psi angles
     "JaninArray", "LYSJaninArray", # time series of chi1/chi2 angles
     "PDB_rama", "PDB_janin", # for testing failures of Ramachandran and Janin classes
-    "PDB_metal", # PDB with metal atoms
     "BATArray", # time series of bond-angle-torsion coordinates array from Molecule_comments_header.mol2
     # DOS line endings
     "WIN_PDB_multiframe", "WIN_DLP_HISTORY", "WIN_TRJ", "WIN_LAMMPSDUMP", "WIN_ARC",
@@ -197,7 +196,8 @@ __all__ = [
     "PDB_CHECK_RIGHTHAND_PA", # for testing right handedness of principal_axes
     "MMTF_NOCRYST", # File with meaningless CRYST1 record (Issue #2679, PR #2685)
     "FHIAIMS", # to test FHIAIMS coordinate files
-    "SDF_molecule"  # MDL SDFile for rdkit
+    "SDF_molecule",  # MDL SDFile for rdkit
+    "PDB_elements",  # PDB file with elements
 ]
 
 from pkg_resources import resource_filename
@@ -263,7 +263,6 @@ PSF_cmap = resource_filename(__name__, 'data/parmed_ala3.psf')
 
 PDB_small = resource_filename(__name__, 'data/adk_open.pdb')
 PDB_closed = resource_filename(__name__, 'data/adk_closed.pdb')
-PDB_metal = resource_filename(__name__, 'data/metals.pdb')
 
 ALIGN = resource_filename(__name__, 'data/align.pdb')
 RNA_PSF = resource_filename(__name__, 'data/analysis/1k5i_c36.psf.gz')
@@ -546,6 +545,8 @@ ITP_no_endif = resource_filename(__name__, 'data/no_endif_spc.itp')
 NAMDBIN = resource_filename(__name__, 'data/adk_open.coor')
 
 SDF_molecule = resource_filename(__name__, 'data/molecule.sdf')
+
+PDB_elements = resource_filename(__name__, 'data/elements.pdb')
 
 # This should be the last line: clean up namespace
 del resource_filename
