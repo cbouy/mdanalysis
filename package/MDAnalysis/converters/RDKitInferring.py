@@ -47,7 +47,7 @@ import warnings
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import ClassVar, Dict, List, Optional, Tuple
+from typing import ClassVar, Dict, List, Optional, Tuple, NamedTuple
 
 import numpy as np
 
@@ -66,7 +66,6 @@ with suppress(ImportError):
     }
     # add string version of the key for each bond
     RDBONDORDER.update({str(key): value for key, value in RDBONDORDER.items()})
-    PERIODIC_TABLE = Chem.GetPeriodicTable()
 
 with suppress(ImportError):
     from rdkit.Chem.rdDetermineBonds import (
@@ -98,6 +97,51 @@ def reorder_atoms(
 def sanitize_mol(mol: "Chem.Mol") -> None:
     """Sanitizes the molecule."""
     Chem.SanitizeMol(mol)
+
+
+class ValenceChargeModel(NamedTuple):
+    valence: int
+    charge: int = 0
+
+
+class PeriodicTable:
+    """Similar class to RDKit's Periodic Table that includes hypervalence states that
+    are frequently seen such as ``[Nv4+]``."""
+    PT: ClassVar["Chem.PeriodicTable"] = Chem.GetPeriodicTable()
+    HYPERVALENCE_MAPPING: ClassVar[Dict[int, List[ValenceChargeModel]]] = {
+        7: [ValenceChargeModel(4, 1)],
+    }
+
+    def get_hypervalences(self, atomnum: int) -> List[ValenceChargeModel]:
+        """Returns a list of possible hypervalence states given an atomic number."""
+        return self.HYPERVALENCE_MAPPING.get(atomnum, [])
+
+    def get_valence_list(self, atom: "Chem.Atom") -> List[ValenceChargeModel]:
+        """Returns a list of valences and charges for a given RDKit Atom. Includes
+        hypervalence states when available.
+        """
+        atomnum = atom.GetAtomicNum()
+        vl = [ValenceChargeModel(v) for v in self.PT.GetValenceList(atomnum)]
+        return [*vl, *self.get_hypervalences(atomnum)]
+
+    def unpaired_electron_counts(self, atom: "Chem.Atom") -> List[int]:
+        expected_vs = self.get_valence_list(atom)
+        current_v = atom.GetTotalValence() - atom.GetFormalCharge()
+        return [(v.valence - current_v) for v in expected_vs]
+
+    def adjust_charge(self, atom: "Chem.Atom") -> None:
+        """Adjust charge of the atom, e.g. if it is hypervalent ...etc."""
+        atomnum = atom.GetAtomicNum()
+        valence = atom.GetTotalValence()
+        if (
+            hvstates := self.get_hypervalences(atomnum)
+        ) and (
+            hvstate := next(
+                (state for state in hvstates if state.valence == valence),
+                None,
+            )
+        ):
+            atom.SetFormalCharge(hvstate.charge)
 
 
 @dataclass(frozen=True)
@@ -247,17 +291,14 @@ class MDAnalysisInferer:
                 neighbors = sorted(
                     atom.GetNeighbors(),
                     reverse=True,
-                    key=lambda a: cls._get_nb_unpaired_electrons(a)[0],
+                    key=cls._atom_sorter,
                 )
                 # check if one of the neighbors has a common NUE
                 for na in neighbors:
                     # get NUE for the neighbor
                     na_nue = cls._get_nb_unpaired_electrons(na)
                     # smallest common NUE
-                    common_nue = min(
-                        min([i for i in nue if i >= 0], default=0),
-                        min([i for i in na_nue if i >= 0], default=0),
-                    )
+                    common_nue = min([i for i in [*nue, *na_nue] if i >= 0], default=0)
                     # a common NUE of 0 means we don't need to do anything
                     if common_nue != 0:
                         # increase bond order
@@ -267,6 +308,8 @@ class MDAnalysisInferer:
                         order = common_nue + 1
                         bond.SetBondType(RDBONDORDER[order])
                         mol.UpdatePropertyCache(strict=False)
+                        # check for hypervalence
+
                         # go to next atom if one of the valences is complete
                         nue = cls._get_nb_unpaired_electrons(atom)
                         if any([n == 0 for n in nue]):

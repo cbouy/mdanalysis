@@ -694,6 +694,18 @@ class TestRDKitMDAnalysisInferer(BaseInferer):
             m = Chem.RemoveHs(m)
             self.assert_isomorphic_resonance_structure(m, ref)
 
+    @pytest.mark.parametrize(("nue", "na_nue", "expected"), [
+        ([], [], 0),
+        ([], [0], 0),
+        ([], [-1], 0),
+        ([0], [0], 0),
+        ([0], [-1, 1], 0),
+        ([-1, 1, 3], [-1, 1], 1),
+    ])
+    def test_common_nue(self, nue, na_nue, expected):
+        common_nue = min([i for i in [*nue, *na_nue] if i >= 0], default=0)
+        assert common_nue == expected
+
     @pytest.mark.xfail(reason="Not currently tackled by the RDKitConverter")
     @pytest.mark.parametrize("smi", [
         "C-[N+]#N",
